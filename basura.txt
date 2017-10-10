@@ -1,0 +1,7 @@
+estupido scanner(int nam){
+	nam = 5 + 1;
+}
+
+int main(){
+	return 0;
+}
