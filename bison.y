@@ -1,9 +1,9 @@
-/* Identifiers */
+/* Archivo byson que posee las declaraciones y las reglas de la gramática.*/
 
 %{
 #include <stdio.h>
-
-// stuff from flex that bison needs to know about:
+#define YYERROR_VERBOSE 1
+// datos importantes.
 extern int yylex();
 extern int yyparse();
 extern FILE *yyin;
@@ -23,7 +23,6 @@ void yyerror(const char *s);
 %token <sval> TYPEDEF_NAME
 %token <sval> ENUMERATION_CONSTANT
 
-
 %token	FUNC_NAME SIZEOF
 %token	PTR_OP INC_OP DEC_OP LEFT_OP RIGHT_OP LE_OP GE_OP EQ_OP NE_OP
 %token	AND_OP OR_OP MUL_ASSIGN DIV_ASSIGN MOD_ASSIGN ADD_ASSIGN
@@ -41,20 +40,18 @@ void yyerror(const char *s);
 
 %token	ALIGNAS ALIGNOF ATOMIC GENERIC NORETURN STATIC_ASSERT THREAD_LOCAL
 
-/* Ahorrarse brete
-%define parse.error verbose
-%define parse.lac full
-*/
-
 %start translation_unit
 %%
 
+/* Unidad básica del parser ()*/
 primary_expression
-	: IDENTIFIER 
-	| constant
-	| string
-	| '(' expression ')'
-	| generic_selection
+	: IDENTIFIER  		
+	| constant				
+	| string					
+	| '(' expression ')'		
+	| generic_selection 	
+	| '(' error ')'	{ yyerrok; }
+	| '(' expression error { yyerrok; }
 	;
 
 constant
@@ -74,16 +71,19 @@ string
 
 generic_selection
 	: GENERIC '(' assignment_expression ',' generic_assoc_list ')'
+	| GENERIC '(' error ',' generic_assoc_list ')' { yyerrok; }
 	;
 
 generic_assoc_list
 	: generic_association
 	| generic_assoc_list ',' generic_association
+	| generic_assoc_list ',' error               { yyerrok; }
 	;
 
 generic_association
 	: type_name ':' assignment_expression
 	| DEFAULT ':' assignment_expression
+	| error ':' assignment_expression { yyerrok; }
 	;
 
 postfix_expression
@@ -97,6 +97,10 @@ postfix_expression
 	| postfix_expression DEC_OP
 	| '(' type_name ')' '{' initializer_list '}'
 	| '(' type_name ')' '{' initializer_list ',' '}'
+	| postfix_expression '[' error ']' { yyerrok; }
+	| postfix_expression '{' error '}' { yyerrok; }
+	| '(' error ')' '{' initializer_list '}' ';' { yyerrok; }
+	| '(' type_name ')' '{' error '}' ';' { yyerrok; }
 	;
 
 argument_expression_list
@@ -112,6 +116,7 @@ unary_expression
 	| SIZEOF unary_expression
 	| SIZEOF '(' type_name ')'
 	| ALIGNOF '(' type_name ')'
+	| ALIGNOF '(' error ')' { yyerrok; }
 	;
 
 unary_operator
@@ -126,6 +131,8 @@ unary_operator
 cast_expression
 	: unary_expression
 	| '(' type_name ')' cast_expression
+	| '(' error ')' cast_expression { yyerrok; }
+	| '(' type_name ')' error { yyerrok; }
 	;
 
 multiplicative_expression
@@ -133,18 +140,25 @@ multiplicative_expression
 	| multiplicative_expression '*' cast_expression
 	| multiplicative_expression '/' cast_expression
 	| multiplicative_expression '%' cast_expression
+	| error '%' cast_expression ';'  { yyerrok; }
+	| multiplicative_expression '%' error ';' { yyerrok; } 
 	;
 
 additive_expression
 	: multiplicative_expression
 	| additive_expression '+' multiplicative_expression
 	| additive_expression '-' multiplicative_expression
+	| error '+' multiplicative_expression { yyerrok; }
+	| error '-' multiplicative_expression { yyerrok; }
+	| additive_expression '+' error { yyerrok; }
+	| additive_expression '-' error { yyerrok; }
 	;
 
 shift_expression
 	: additive_expression
 	| shift_expression LEFT_OP additive_expression
 	| shift_expression RIGHT_OP additive_expression
+	| shift_expression RIGHT_OP error { yyerrok; }
 	;
 
 relational_expression
@@ -153,47 +167,60 @@ relational_expression
 	| relational_expression '>' shift_expression
 	| relational_expression LE_OP shift_expression
 	| relational_expression GE_OP shift_expression
+	| relational_expression '<' error { yyerrok; }
+	| relational_expression '>' error { yyerrok; }
+	| relational_expression LE_OP error { yyerrok; }
+	| relational_expression GE_OP error { yyerrok; }
 	;
 
 equality_expression
 	: relational_expression
 	| equality_expression EQ_OP relational_expression
 	| equality_expression NE_OP relational_expression
+	| equality_expression EQ_OP error  { yyerrok; }
+	| equality_expression NE_OP error { yyerrok; }
 	;
 
 and_expression
 	: equality_expression
 	| and_expression '&' equality_expression
+	| and_expression '&' error { yyerrok; }
 	;
 
 exclusive_or_expression
 	: and_expression
 	| exclusive_or_expression '^' and_expression
+	| exclusive_or_expression '^' error { yyerrok; }
 	;
 
 inclusive_or_expression
 	: exclusive_or_expression
 	| inclusive_or_expression '|' exclusive_or_expression
+	| error '|' exclusive_or_expression { yyerrok; }
 	;
 
 logical_and_expression
 	: inclusive_or_expression
 	| logical_and_expression AND_OP inclusive_or_expression
+	| logical_and_expression AND_OP error ';' { yyerrok; }
 	;
 
 logical_or_expression
 	: logical_and_expression
 	| logical_or_expression OR_OP logical_and_expression
+	| logical_or_expression OR_OP error { yyerrok; }
 	;
 
 conditional_expression
 	: logical_or_expression
 	| logical_or_expression '?' expression ':' conditional_expression
+	| logical_or_expression '?' error ':' conditional_expression { yyerrok; }
 	;
 
 assignment_expression
 	: conditional_expression
 	| unary_expression assignment_operator assignment_expression
+	| unary_expression error assignment_expression { yyerrok; }
 	;
 
 assignment_operator
@@ -213,6 +240,7 @@ assignment_operator
 expression
 	: assignment_expression
 	| expression ',' assignment_expression
+	| expression ',' error { yyerrok; }
 	;
 
 constant_expression
@@ -223,6 +251,8 @@ declaration
 	: declaration_specifiers ';'
 	| declaration_specifiers init_declarator_list ';'
 	| static_assert_declaration
+	| error ';'  { yyerrok; }
+	| declaration_specifiers error ';' { yyerrok; }
 	;
 
 declaration_specifiers
@@ -236,16 +266,20 @@ declaration_specifiers
 	| function_specifier
 	| alignment_specifier declaration_specifiers
 	| alignment_specifier
+	| error declaration_specifiers { yyerrok; }
 	;
 
 init_declarator_list
 	: init_declarator
 	| init_declarator_list ',' init_declarator
+	| init_declarator_list ',' error { yyerrok; }
 	;
 
 init_declarator
 	: declarator '=' initializer
 	| declarator
+	//| error '=' initializer //{ yyerrok; }
+	//| declarator '=' error //{ yyerrok; }
 	;
 
 storage_class_specifier
@@ -510,6 +544,7 @@ block_item
 expression_statement
 	: ';'
 	| expression ';'
+	| expression error { yyerrok; }
 	;
 
 selection_statement
@@ -525,6 +560,10 @@ iteration_statement
 	| FOR '(' expression_statement expression_statement expression ')' statement
 	| FOR '(' declaration expression_statement ')' statement
 	| FOR '(' declaration expression_statement expression ')' statement
+	//| WHILE '(' error ')' statement
+	//| WHILE '(' expression ')' error
+	| FOR '(' error expression_statement ')' statement
+	| FOR error expression_statement ')' statement
 	;
 
 jump_statement
@@ -533,6 +572,7 @@ jump_statement
 	| BREAK ';'
 	| RETURN ';'
 	| RETURN expression ';'
+	| RETURN error ';'
 	;
 
 translation_unit
@@ -548,7 +588,7 @@ external_declaration
 function_definition
 	: declaration_specifiers declarator declaration_list compound_statement
 	| declaration_specifiers declarator compound_statement
-	| error declarator compound_statement
+	| error declarator compound_statement { yyerrok; }
 	;
 
 declaration_list
@@ -558,34 +598,123 @@ declaration_list
 
 %%
 #include <stdio.h>
+#include <string.h>
+extern int row;
+extern int column;
+char *messageOne;
+char *messageTwo;
+char *messageThree;
+
+void writeInString(const char *s, int start, int end, int numLines){
+	int MAXIDLEN = end - start;
+	int i=0;
+	char message[200], ch;
+	while(start < end){
+		ch = s[start];
+		message[i] = ch;
+		start++;
+		i++;
+	}
+	message[i] = '\0';
+	switch(numLines){
+		case 1:
+			messageOne =  malloc(MAXIDLEN);
+			strcpy(messageOne, message);
+			break;
+		case 2:
+			messageTwo = malloc(MAXIDLEN);
+			strcpy(messageTwo, message);
+			break;
+		default:
+			messageThree = malloc(MAXIDLEN);
+			strcpy(messageThree, message);
+	}
+}
+
+int messageAnalise(const char *s){
+	int numLines = 0;
+	int start = 0;
+	int k=0;
+	for(k; k < strlen(s); k++){
+		if (s[k] == ',' && k < strlen(s)-1){
+			if (s[k + 1] == ' '){
+				numLines++;
+				writeInString(s, start, k, numLines);
+				start = k + 1;
+			}
+		}
+	}
+	numLines++;
+	writeInString(s, start, k, numLines);
+	numLines--;
+	return numLines;
+}
+
+void lookLines(int lineError, int columnPar){
+	char messageLine[MAX_LINE_PRINT];
+	char messageRepresent[MAX_LINE_PRINT];
+	for (int i=0; i < MAX_LINE_PRINT; i++){
+		messageRepresent[i] ='\0';
+	}
+	int exactlyPlace = columnPar;
+	int count;
+	int tabs = 0;
+	fseek(myfile, 0, SEEK_SET);
+	int c;
+	int countColumn = 0;
+	int countLines = 1;
+	while (countLines <= lineError){
+		c = fgetc(myfile);
+		if( feof(myfile)){
+			break;
+		}
+		if (c == '\n'){
+			countLines++;
+		}else if (countLines == lineError && c != '\t'){
+			messageLine[countColumn] = c;
+			countColumn++;
+		}else if (countLines == lineError && c == '\t'){
+			tabs++;
+		}
+	}
+	exactlyPlace = columnPar - (tabs * 4) + tabs;
+	messageLine[countColumn] = '\0';
+	countColumn = 0;
+	while(countColumn < exactlyPlace){
+		messageRepresent[countColumn] = ' ';
+		countColumn++;
+	}
+	messageRepresent[countColumn - 1] = '^';
+	messageRepresent[countColumn] = '\0';
+	fprintf(stderr, " %s\n", messageLine);
+	fprintf(stderr, " %s%s%s\n", COLOR_GREEN, messageRepresent, COLOR_RESET);
+}
 
 void yyerror(const char *s)
 {
 	fflush(stdout);
-	fprintf(stderr, "*** %s\n", s);
-}
-
-int main(int argc, char **argv){
-	/*
-	if(argc < 2) {
-		fprintf(stderr, "Menos de 2 parametros\n");
-		return 1;
+	counter++;
+	int x = messageAnalise(s);
+	int i;
+	for (i = 0; yytext[i] != '\0'; i++){ }
+	int columnPar = column - i;
+	if (x == 0){
+		fprintf(stderr, "%s%s:%d:%d: %s%s: %s'%s' \n", COLOR_BLUE, fileName, row, columnPar, COLOR_RED, messageOne, COLOR_YELLOW, yytext);
+		fprintf(fileErrors, "Fila:%d - Columna:%d : \n%s, %s\n\n", row+1, columnPar, messageOne, yytext);	
+free(messageOne);
+	}else if(x == 1){
+		fprintf(stderr, "%s%s:%d:%d: %s%s: %s'%s' %s%s \n", COLOR_BLUE, fileName, row, columnPar, COLOR_RED, messageOne, COLOR_YELLOW, yytext, COLOR_RESET, messageTwo);
+		fprintf(fileErrors, "Fila:%d - Columna:%d : \n%s, %s: %s \n\n", row+1, columnPar, messageOne, messageTwo, yytext);
+		free(messageOne);
+		free(messageTwo);
+	}else if(x == 2){
+		fprintf(stderr, "%s%s:%d:%d: %s%s: %s'%s' %s%s%s \n", COLOR_BLUE, fileName, row, columnPar, COLOR_RED, messageOne, COLOR_YELLOW, yytext, COLOR_RESET, messageTwo, messageThree);
+		fprintf(fileErrors, "Fila:%d - Columna:%d : \n%s, %s: %s \n\n", row+1, columnPar, messageOne, messageTwo, yytext);
+		free(messageOne);
+		free(messageTwo);
+		free(messageThree);
+	}else{
+		fprintf(stderr, "No funcionó %s" , "l");
 	}
-	*/
-	FILE *myfile;
-
-	myfile = fopen(argv[1], "r");
-	// make sure it's valid:
-	if (!myfile) {
-		printf("No funcó. ¡Suicidate!");
-		return -1;
-	}
-	// set flex to read from it instead of defaulting to STDIN:
-	yyin = myfile;
-
-	// parse through the input until there is no more:
-	do {
-		yyparse();
-	} while (!feof(yyin));
+	lookLines(row, columnPar);
 }
-

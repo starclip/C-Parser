@@ -1,0 +1,4 @@
+\beamer@endinputifotherversion {3.36pt}
+\beamer@sectionintoc {1}{BISON Y FASE DE PARSING}{3}{0}{1}
+\beamer@sectionintoc {2}{C\IeC {\'O}DIGO FUENTE}{9}{0}{2}
+\beamer@sectionintoc {3}{ERRORES}{37}{0}{3}

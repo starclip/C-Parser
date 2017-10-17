@@ -1,0 +1,6 @@
+\frametitle{Parsing}
+El parsing es la segunda fase de un compilador. La fase de parsing es el proceso donde se toma
+    el conjunto de tokens producidos por la fase de análisis léxico y se genera un
+    \textbf{árbol de sintaxis}. Luego este se revisa de acuerdo a la gramática formal del
+    lenguaje definido y se verifica que las expresiones construidas por el arreglo de tokens
+    sean sintacticamente correctos. \newline

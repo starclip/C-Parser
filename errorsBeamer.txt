@@ -1,0 +1,30 @@
+Fila:318 - Columna:7 : 
+syntax error,  unexpected '>': > 
+
+Fila:363 - Columna:11 : 
+syntax error,  unexpected ',': , 
+
+Fila:370 - Columna:23 : 
+syntax error,  unexpected ',': , 
+
+Fila:519 - Columna:23 : 
+syntax error,  unexpected I_CONSTANT: 15 
+
+Fila:520 - Columna:45 : 
+syntax error,  unexpected I_CONSTANT: 5 
+
+Fila:521 - Columna:10 : 
+syntax error,  unexpected I_CONSTANT: 0 
+
+Fila:524 - Columna:30 : 
+lexical error, character unknown: $ 
+
+Fila:529 - Columna:15 : 
+syntax error,  unexpected '<': < 
+
+Fila:530 - Columna:14 : 
+syntax error,  unexpected ';': ; 
+
+Fila:535 - Columna:1 : 
+syntax error,  unexpected '}': } 
+
